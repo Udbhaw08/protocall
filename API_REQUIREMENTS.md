@@ -108,6 +108,7 @@ Where they go:
 - `STRIPE_PLUS_PRICE_ID` and `STRIPE_PRO_PRICE_ID` come from each product's pricing section in Stripe.
 - Checkout uses `price_...` IDs, not `prod_...` IDs.
 - `APP_URL` controls where Stripe redirects after success or cancellation.
+- For production, set `STRIPE_WEBHOOK_SECRET` in Render, not just local `server/.env`.
 
 Security note:
 

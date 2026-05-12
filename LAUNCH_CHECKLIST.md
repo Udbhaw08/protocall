@@ -49,6 +49,7 @@ Use this as the working checklist before inviting real users.
 - [x] Add Stripe product IDs to `server/.env`.
 - [x] Add Stripe price IDs to `server/.env`.
 - [x] Add initial Stripe webhook endpoint.
+- [x] Configure Stripe webhook secret locally.
 - [ ] Store Stripe subscription state in Supabase before granting paid access automatically.
 
 ## Deployment
