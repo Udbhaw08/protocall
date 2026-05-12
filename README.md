@@ -88,6 +88,11 @@ After both are deployed:
 - Create the Stripe webhook endpoint at `https://your-render-service.onrender.com/api/stripe/webhook`.
 - Select Stripe events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`.
 
+Current production URLs:
+
+- Frontend: `https://protocall-inky.vercel.app`
+- Backend: `https://protocall-api.onrender.com`
+
 ## Near-Term Engineering Tasks
 
 - Connect all sensitive Gemini calls through the backend.

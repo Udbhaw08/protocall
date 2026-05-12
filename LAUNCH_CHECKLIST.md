@@ -55,9 +55,14 @@ Use this as the working checklist before inviting real users.
 
 - [x] Add Vercel frontend config.
 - [x] Add Render backend blueprint.
-- [ ] Deploy frontend.
-- [ ] Deploy backend.
-- [ ] Add production environment variables.
-- [ ] Confirm health check works.
+- [x] Deploy frontend.
+- [x] Deploy backend.
+- [x] Add production environment variables.
+- [x] Confirm health check works.
 - [ ] Confirm analysis endpoint works from deployed frontend.
 - [ ] Confirm microphone/camera permissions work on deployed HTTPS URL.
+
+Production URLs:
+
+- Frontend: `https://protocall-inky.vercel.app`
+- Backend: `https://protocall-api.onrender.com`
