@@ -8,6 +8,7 @@ import { AnalysisReport } from './AnalysisReport';
 import { generateEvaluation } from './analysisService';
 import { startCheckout } from './billingService';
 import { Icons } from './constants';
+import { supabase } from './supabaseClient';
 
 const INITIAL_STATS = {
     totalSessions: 0,
@@ -17,13 +18,14 @@ const INITIAL_STATS = {
     averageScore: 0
 };
 
-const FairHiringInterview = ({ onExit }) => {
+const FairHiringInterview = ({ user, onExit }) => {
     const navigate = useNavigate();
     const [state, setState] = useState({
         status: InterviewStatus.IDLE,
         config: null,
         analysis: null,
-        history: [],
+        currentHistory: [],
+        pastInterviews: [],
         stats: INITIAL_STATS
     });
 
@@ -31,79 +33,129 @@ const FairHiringInterview = ({ onExit }) => {
     const [checkoutLoading, setCheckoutLoading] = useState(null);
     const [hasKey, setHasKey] = useState(true);
 
-    // Load stats from local storage on mount
+    // Load interviews and compute stats on mount
     useEffect(() => {
-        const savedStats = localStorage.getItem('fair_hiring_interview_stats');
-        if (savedStats) {
+        const loadData = async () => {
+            if (!user) return;
+
             try {
-                setState(prev => ({ ...prev, stats: JSON.parse(savedStats) }));
-            } catch (e) {
-                console.error("Failed to parse saved stats", e);
+                const { data: interviews, error } = await supabase
+                    .from('interviews')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Compute stats from interviews
+                const totalSessions = interviews.length;
+                const scoreHistory = interviews
+                    .filter(i => i.analysis?.overallScore)
+                    .map(i => i.analysis.overallScore);
+                const averageScore = scoreHistory.length > 0
+                    ? Math.round(scoreHistory.reduce((a, b) => a + b, 0) / scoreHistory.length)
+                    : 0;
+
+                // Compute streak (simplified - last 7 days)
+                const now = new Date();
+                const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const recentInterviews = interviews.filter(i =>
+                    new Date(i.created_at) >= sevenDaysAgo
+                );
+                const currentStreak = recentInterviews.length;
+
+                const lastSessionDate = interviews.length > 0
+                    ? new Date(interviews[0].created_at).toISOString().split('T')[0]
+                    : null;
+
+                const stats = {
+                    totalSessions,
+                    currentStreak,
+                    lastSessionDate,
+                    scoreHistory,
+                    averageScore
+                };
+
+                setState(prev => ({ ...prev, stats, pastInterviews: interviews }));
+            } catch (error) {
+                console.error('Failed to load interviews:', error);
             }
-        }
+        };
+
+        loadData();
 
         // Live Audio session needs the key client-side; analysis goes through the proxy
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_API_KEY;
         const hasProxy = !!import.meta.env.VITE_API_URL;
         setHasKey(!!apiKey || hasProxy);
-    }, []);
-
-    const updateStats = (newScore) => {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-
-        setState(prev => {
-            const oldStats = prev.stats;
-            const lastDate = oldStats.lastSessionDate;
-
-            let newStreak = oldStats.currentStreak;
-
-            if (!lastDate) {
-                newStreak = 1;
-            } else {
-                const lastDateObj = new Date(lastDate);
-                const diffTime = Math.abs(now.getTime() - lastDateObj.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays === 1) {
-                    newStreak += 1;
-                } else if (diffDays > 1) {
-                    newStreak = 1;
-                }
-            }
-
-            const newHistory = [...oldStats.scoreHistory, newScore];
-            const newAverage = Math.round(newHistory.reduce((a, b) => a + b, 0) / newHistory.length);
-
-            const updatedStats = {
-                totalSessions: oldStats.totalSessions + 1,
-                currentStreak: newStreak,
-                lastSessionDate: today,
-                scoreHistory: newHistory,
-                averageScore: newAverage
-            };
-
-            localStorage.setItem('fair_hiring_interview_stats', JSON.stringify(updatedStats));
-            return { ...prev, stats: updatedStats };
-        });
-    };
+    }, [user]);
 
     const handleStartInterview = (config) => {
         setState(prev => ({ ...prev, config, status: InterviewStatus.INTERVIEWING }));
     };
 
     const handleInterviewComplete = async (history, duration) => {
-        if (!state.config) return;
+        if (!state.config || !user) return;
 
         setLoading(true);
         try {
             const evaluation = await generateEvaluation(state.config, history);
             evaluation.duration = duration;
-            updateStats(evaluation.overallScore);
+
+            // Insert into database
+            const { error } = await supabase
+                .from('interviews')
+                .insert({
+                    user_id: user.id,
+                    config: state.config,
+                    history,
+                    analysis: evaluation,
+                    duration
+                });
+
+            if (error) throw error;
+
+            // Reload data
+            const { data: interviews, error: fetchError } = await supabase
+                .from('interviews')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (fetchError) throw fetchError;
+
+            // Recompute stats
+            const totalSessions = interviews.length;
+            const scoreHistory = interviews
+                .filter(i => i.analysis?.overallScore)
+                .map(i => i.analysis.overallScore);
+            const averageScore = scoreHistory.length > 0
+                ? Math.round(scoreHistory.reduce((a, b) => a + b, 0) / scoreHistory.length)
+                : 0;
+
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const recentInterviews = interviews.filter(i =>
+                new Date(i.created_at) >= sevenDaysAgo
+            );
+            const currentStreak = recentInterviews.length;
+
+            const lastSessionDate = interviews.length > 0
+                ? new Date(interviews[0].created_at).toISOString().split('T')[0]
+                : null;
+
+            const stats = {
+                totalSessions,
+                currentStreak,
+                lastSessionDate,
+                scoreHistory,
+                averageScore
+            };
+
             setState(prev => ({
                 ...prev,
-                history,
+                currentHistory: history,
                 analysis: evaluation,
+                pastInterviews: interviews,
+                stats,
                 status: InterviewStatus.COMPLETED
             }));
         } catch (err) {
@@ -191,6 +243,22 @@ const FairHiringInterview = ({ onExit }) => {
                                         {state.stats.currentStreak}D CONSISTENCY
                                     </div>
                                 )}
+                            </div>
+
+                            {/* User Info */}
+                            <div className="flex justify-center">
+                                <div className="flex items-center gap-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                    <span className="text-sm font-medium">{user?.email}</span>
+                                    <button
+                                        onClick={async () => {
+                                            await supabase.auth.signOut();
+                                            onExit && onExit();
+                                        }}
+                                        className="text-xs px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Main Title */}
