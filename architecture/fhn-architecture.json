@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Fair Hiring Network (FHN) — Multi-Agent Architecture",
+    "subtitle": "Evidence-Based Verification, Skill Consolidation, Bias-Free Matching, and Passport Minting",
+    "output": "fhn-architecture.html",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-pipeline",
+        "label": "End-to-End Agent Workflow",
+        "focus": ["gateway", "agent_ats", "agent_github", "agent_leetcode", "agent_linkedin", "agent_skill", "agent_bias", "agent_matching", "agent_passport"],
+        "note": "Multi-agent flow from raw evidence parsing to skill consolidation, matching, and passport issuance."
+      },
+      {
+        "id": "candidate-synthesis",
+        "label": "Skill Consolidation",
+        "focus": ["agent_ats", "agent_github", "agent_leetcode", "agent_linkedin", "agent_skill"],
+        "note": "ATS, GitHub, LeetCode, and LinkedIn outputs synthesized into unified verified skills."
+      },
+      {
+        "id": "bias-matching-passport",
+        "label": "Matching & Passport Issuance",
+        "focus": ["agent_bias", "agent_skill", "agent_matching", "agent_passport", "database"],
+        "note": "Matching Agent correlates Job Agent skills with Candidate skills to issue signed Passports."
+      }
+    ]
+  },
+  "components": [
+    { "id": "clients", "type": "external", "label": "End Users", "sublabel": "Candidates & Companies", "pos": [40, 240], "size": [130, 56] },
+    { "id": "auth0", "type": "security", "label": "Auth0 Identity", "sublabel": "OAuth2 / OIDC", "pos": [40, 90], "size": [130, 56], "tag": "JWT + PKCE" },
+    { "id": "frontend", "type": "frontend", "label": "FHN Web App", "sublabel": "React 18 · Vite :5173", "pos": [210, 240], "size": [130, 56], "tag": "Three.js + Tailwind" },
+    { "id": "gateway", "type": "backend", "label": "Pipeline Gateway", "sublabel": "FastAPI Core :8010", "pos": [210, 90], "size": [130, 56], "tag": "10-Stage Dispatcher" },
+    { "id": "agent_ats", "type": "backend", "label": "ATS Agent", "sublabel": "Resume & Guard :8004", "pos": [410, 70], "size": [136, 48], "tag": "Anti-Injection" },
+    { "id": "agent_github", "type": "backend", "label": "GitHub Agent", "sublabel": "Repo Metrics :8005", "pos": [410, 130], "size": [136, 48], "tag": "Code Proof" },
+    { "id": "agent_leetcode", "type": "backend", "label": "LeetCode Agent", "sublabel": "Algo Rating :8006", "pos": [410, 190], "size": [136, 48], "tag": "Problem Solving" },
+    { "id": "agent_linkedin", "type": "backend", "label": "LinkedIn Agent", "sublabel": "Work History :8007", "pos": [410, 250], "size": [136, 48], "tag": "Career History" },
+    { "id": "agent_bias", "type": "backend", "label": "Job & Bias Agent", "sublabel": "Job Skills Audit :8002", "pos": [410, 330], "size": [136, 54], "tag": "Fairness Audit" },
+    { "id": "agent_skill", "type": "backend", "label": "Skill Agent", "sublabel": "Skill Consolidation :8003", "pos": [620, 160], "size": [140, 56], "tag": "Unified Profile" },
+    { "id": "agent_matching", "type": "backend", "label": "Matching Agent", "sublabel": "Evidence Ranker :8001", "pos": [830, 245], "size": [140, 56], "tag": "Score Synthesis" },
+    { "id": "agent_passport", "type": "security", "label": "Passport Agent", "sublabel": "Skill Passports :8008", "pos": [1040, 245], "size": [140, 56], "tag": "ECDSA Signed" },
+    { "id": "database", "type": "database", "label": "PostgreSQL DB", "sublabel": "State & Passports :5432", "pos": [1040, 360], "size": [140, 56], "tag": "Asyncpg Store" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Candidate Evidence Extractors", "wraps": ["agent_ats", "agent_github", "agent_leetcode", "agent_linkedin"] },
+    { "kind": "security-group", "label": "Skill Synthesis & Evaluation Engine", "wraps": ["agent_skill", "agent_bias", "agent_matching", "agent_passport"] }
+  ],
+  "connections": [
+    { "from": "clients", "to": "frontend", "label": "HTTPS", "variant": "emphasis", "labelDy": -18 },
+    { "from": "clients", "to": "auth0", "label": "Login", "variant": "security" },
+    { "from": "auth0", "to": "gateway", "label": "JWT Verify", "variant": "security", "labelDy": -20 },
+    { "from": "frontend", "to": "gateway", "label": "API Trigger", "variant": "emphasis" },
+    { "from": "gateway", "to": "agent_ats", "variant": "dashed" },
+    { "from": "gateway", "to": "agent_github", "variant": "dashed" },
+    { "from": "gateway", "to": "agent_leetcode", "variant": "dashed" },
+    { "from": "gateway", "to": "agent_linkedin", "variant": "dashed" },
+    { "from": "frontend", "to": "agent_bias", "label": "Post Job", "variant": "emphasis" },
+    { "from": "agent_ats", "to": "agent_skill" },
+    { "from": "agent_github", "to": "agent_skill" },
+    { "from": "agent_leetcode", "to": "agent_skill" },
+    { "from": "agent_linkedin", "to": "agent_skill" },
+    { "from": "agent_skill", "to": "agent_matching", "label": "Candidate Skills", "variant": "emphasis", "labelDy": 24 },
+    { "from": "agent_bias", "to": "agent_matching", "label": "Required Skills", "variant": "emphasis" },
+    { "from": "agent_matching", "to": "agent_passport", "label": "Match Score", "variant": "security", "labelDy": -18 },
+    { "from": "agent_passport", "to": "database", "label": "Mint Passport", "variant": "security", "labelDy": 24 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Evidence Verification Pipeline",
+      "items": [
+        "ATS Agent with ATS Guard blocks zero-font text and prompt injections",
+        "GitHub Agent computes verified commit velocity, test coverage, and code ownership",
+        "LeetCode and LinkedIn Agents verify algorithm contest rankings and career history"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Skill Consolidation & Bias Audit",
+      "items": [
+        "Skill Agent combines all raw evidence into a standardized candidate skill matrix",
+        "Job & Bias Agent audits job descriptions for demographic bias and extracts target skills",
+        "Decoupled roles ensure skill verification is mathematically independent of job posting"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Matching & Cryptographic Passports",
+      "items": [
+        "Matching Agent ranks candidate evidence directly against job requirements without pedigree bias",
+        "Passport Agent mints cryptographically signed, portable Skill Passports",
+        "PostgreSQL asynchronously persists immutable audit trails and credential hashes"
+      ]
+    }
+  ]
+}

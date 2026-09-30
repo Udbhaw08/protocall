@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Protocall System Architecture",
+    "subtitle": "AI-Powered Live Mock Interview & Scoring Platform",
+    "output": "architecture/protocall-architecture.html",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "views": [
+      {
+        "id": "full-system",
+        "label": "Full System Overview",
+        "focus": ["candidate", "frontend", "session_engine", "api_proxy", "analysis_engine", "gemini_live", "gemini_text", "database", "billing_engine", "stripe_cloud"],
+        "note": "End-to-end architecture of Protocall AI mock interview platform."
+      },
+      {
+        "id": "live-interview",
+        "label": "Live Interview Session",
+        "focus": ["candidate", "session_engine", "gemini_live"],
+        "note": "Ultra-low latency audio/video streaming with Gemini 2.5 Flash Native Audio."
+      },
+      {
+        "id": "scoring-pipeline",
+        "label": "Analysis & Scoring Pipeline",
+        "focus": ["frontend", "analysis_engine", "gemini_text", "database"],
+        "note": "Transcript extraction, structured JSON grading, and score persistence."
+      },
+      {
+        "id": "billing-lifecycle",
+        "label": "Stripe Monetization",
+        "focus": ["frontend", "billing_engine", "stripe_cloud", "database"],
+        "note": "Checkout session creation, subscription state sync, and signed webhook events."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "candidate",
+      "type": "external",
+      "label": "Candidate",
+      "sublabel": "Browser Client",
+      "pos": [20, 120],
+      "size": [130, 60]
+    },
+    {
+      "id": "session_engine",
+      "type": "frontend",
+      "label": "Interview Engine",
+      "sublabel": "WebAudio · 1fps Video",
+      "tag": "Browser Runtime",
+      "pos": [250, 120],
+      "size": [160, 60]
+    },
+    {
+      "id": "frontend",
+      "type": "frontend",
+      "label": "Protocall SPA",
+      "sublabel": "React 18 · Vite · Recharts",
+      "brand": "react",
+      "tag": "Vercel Edge",
+      "pos": [250, 280],
+      "size": [160, 60]
+    },
+    {
+      "id": "api_proxy",
+      "type": "backend",
+      "label": "API Gateway",
+      "sublabel": "Express · Rate Limiter",
+      "brand": "node-js",
+      "tag": "Render",
+      "pos": [490, 120],
+      "size": [150, 60]
+    },
+    {
+      "id": "analysis_engine",
+      "type": "backend",
+      "label": "Analysis Service",
+      "sublabel": "/api/analyze",
+      "tag": "Prompt Engine",
+      "pos": [490, 280],
+      "size": [150, 60]
+    },
+    {
+      "id": "billing_engine",
+      "type": "backend",
+      "label": "Billing Handler",
+      "sublabel": "Stripe Webhooks",
+      "tag": "HMAC Verified",
+      "pos": [490, 440],
+      "size": [150, 60]
+    },
+    {
+      "id": "gemini_live",
+      "type": "cloud",
+      "label": "Gemini Live Audio",
+      "sublabel": "2.5 Flash Native Audio",
+      "brand": "google-gemini",
+      "tag": "Bidirectional Audio",
+      "pos": [740, 120],
+      "size": [170, 60]
+    },
+    {
+      "id": "gemini_text",
+      "type": "cloud",
+      "label": "Gemini 2.5 Flash",
+      "sublabel": "Structured Scoring API",
+      "brand": "google-gemini",
+      "tag": "Text Analysis",
+      "pos": [740, 280],
+      "size": [170, 60]
+    },
+    {
+      "id": "database",
+      "type": "database",
+      "label": "PostgreSQL DB",
+      "sublabel": "Users · Sessions · Scores",
+      "brand": "postgresql",
+      "tag": "Supabase",
+      "pos": [740, 440],
+      "size": [170, 60]
+    },
+    {
+      "id": "stripe_cloud",
+      "type": "external",
+      "label": "Stripe Platform",
+      "sublabel": "Checkout & Webhooks",
+      "brand": "stripe",
+      "pos": [20, 440],
+      "size": [130, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Client Tier (Vercel Edge & Browser)",
+      "wraps": ["session_engine", "frontend"],
+      "pad": 18
+    },
+    {
+      "kind": "region",
+      "label": "Backend Platform Tier (Render)",
+      "wraps": ["api_proxy", "analysis_engine", "billing_engine"],
+      "pad": 18
+    },
+    {
+      "kind": "security-group",
+      "label": "Google Gemini AI Cloud",
+      "wraps": ["gemini_live", "gemini_text"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "from": "candidate",
+      "to": "session_engine",
+      "label": "Mic + Video",
+      "variant": "emphasis"
+    },
+    {
+      "from": "candidate",
+      "to": "frontend",
+      "label": "HTTPS Load",
+      "variant": "default"
+    },
+    {
+      "from": "frontend",
+      "to": "session_engine",
+      "label": "Lifecycle",
+      "variant": "dashed",
+      "labelAt": [330, 230]
+    },
+    {
+      "from": "session_engine",
+      "to": "gemini_live",
+      "label": "PCM 16k/24k Live Stream",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[330, 50], [825, 50]]
+    },
+    {
+      "from": "session_engine",
+      "to": "analysis_engine",
+      "label": "Transcript",
+      "variant": "default"
+    },
+    {
+      "from": "api_proxy",
+      "to": "analysis_engine",
+      "label": "Route Request",
+      "variant": "default",
+      "labelAt": [565, 230]
+    },
+    {
+      "from": "analysis_engine",
+      "to": "gemini_text",
+      "label": "Evaluation Prompt",
+      "variant": "security"
+    },
+    {
+      "from": "analysis_engine",
+      "to": "database",
+      "label": "Store Evaluation",
+      "variant": "dashed"
+    },
+    {
+      "from": "frontend",
+      "to": "billing_engine",
+      "label": "Checkout",
+      "variant": "default"
+    },
+    {
+      "from": "stripe_cloud",
+      "to": "billing_engine",
+      "label": "Webhook Events",
+      "variant": "emphasis"
+    },
+    {
+      "from": "billing_engine",
+      "to": "database",
+      "label": "Sync Subscription",
+      "variant": "default",
+      "labelAt": [690, 490]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Client Tier (Vercel)",
+      "items": [
+        "React 18 SPA built with Vite, Tailwind CSS, & Framer Motion",
+        "Live MediaStream audio capture (16kHz PCM input / 24kHz PCM output)",
+        "Webcam visual feedback (1 frame/sec) observing candidate cues & posture",
+        "Multi-dimensional radar scoring & progress analytics rendered via Recharts"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Backend Services (Render)",
+      "items": [
+        "Express API proxy with strict CORS and IP rate-limiting (20 req/hr)",
+        "Secure server-side API key isolation preventing browser credential leakage",
+        "Stripe checkout session orchestration & raw body cryptographic HMAC verification",
+        "Session history & user state persistence targeting Supabase PostgreSQL"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Dual AI Engine (Google Gemini)",
+      "items": [
+        "Gemini 2.5 Flash Native Audio for real-time bidirectional conversational mock interviews",
+        "Gemini 2.5 Flash Text API for structured JSON scoring across 4 evaluation pillars",
+        "Rubrics: Clarity (1-100), Confidence (1-100), Communication (1-100), Technical Knowledge",
+        "Automated extraction of candidate strengths, weaknesses, and curated study recommendations"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Security & Production Readiness",
+      "items": [
+        "Zero secret leakage: Gemini API keys and Stripe secrets remain strictly server-side",
+        "Ephemeral audio context isolation prevents cross-session memory leakage",
+        "Automated webhook reconciliation ensures resilient subscription sync without race conditions"
+      ]
+    }
+  ]
+}
